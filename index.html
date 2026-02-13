@@ -2,18 +2,16 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>GradeCash PRO</title>
+    <title>GradeCash PRO — Money Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --bg: #000; --card: #111; --accent: #32ff7e; --text: #fff; --mono: #2ecc71; }
-        body { font-family: 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
+        body { font-family: 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; padding-bottom: 50px; }
         
-        /* Статистика */
         .stats-bar { display: flex; gap: 10px; margin-bottom: 20px; }
         .stat-card { flex: 1; background: var(--card); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; border: 1px solid #222; }
         .stat-card span { display: block; font-size: 1.4em; font-weight: 900; color: var(--accent); }
 
-        /* Картка Monobank (імітація) */
         .mono-card { width: 100%; max-width: 350px; height: 210px; background: #1a1a1a; border-radius: 18px; margin: 20px auto; padding: 25px; box-sizing: border-box; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; }
         .mono-logo { font-weight: bold; font-size: 1.2em; }
         .mono-chip { width: 40px; height: 30px; background: #333; border-radius: 5px; margin-top: 20px; }
@@ -22,29 +20,27 @@
         .mono-type { position: absolute; bottom: 25px; right: 25px; font-weight: bold; font-size: 1.1em; }
         .card-line { position: absolute; left: 0; top: 20px; width: 4px; height: 40px; background: var(--mono); }
 
-        /* Уроки стовпчиком */
         .day-card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
         .lesson-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
         .lesson-num { color: #555; font-weight: bold; width: 30px; }
         input[type="number"] { background: #222; border: none; color: #fff; padding: 8px; border-radius: 8px; width: 60px; text-align: center; font-size: 1.1em; }
 
-        /* Конвертація */
         .usd-display { text-align: center; margin-top: 30px; }
-        .usd-val { font-size: 3em; font-weight: 900; color: var(--accent); margin: 0; }
+        .usd-val { font-size: 3.5em; font-weight: 900; color: var(--accent); margin: 0; }
         .motivation-text { color: #888; margin-bottom: 10px; }
 
-        /* Модальне вікно (Графік) */
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; padding: 20px; box-sizing: border-box; }
-        .close-overlay { position: absolute; top: 20px; right: 20px; font-size: 2em; cursor: pointer; }
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto; }
+        .close-overlay { position: absolute; top: 20px; right: 20px; font-size: 2.5em; cursor: pointer; color: var(--accent); }
 
-        .finish-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 15px; color: #000; font-weight: 900; cursor: pointer; margin: 20px 0; }
+        .finish-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 15px; color: #000; font-weight: 900; cursor: pointer; margin: 20px 0; font-size: 1.1em; }
     </style>
 </head>
 <body>
 
     <div class="stats-bar">
-        <div class="stat-card" onclick="showHistory('month')">Місяць<span id="stat-month">0</span></div>
-        <div class="stat-card" onclick="showHistory('year')">Рік<span id="stat-year">0</span></div>
+        <div class="stat-card" onclick="showHistory('month')">Тиждень <span id="stat-week-num">1</span></div>
+        <div class="stat-card" onclick="showHistory('month')">Місяць <span id="stat-month">0</span></div>
+        <div class="stat-card" onclick="showHistory('year')">Рік <span id="stat-year">0</span></div>
     </div>
 
     <div id="days-container"></div>
@@ -69,14 +65,15 @@
 
     <div id="historyOverlay" class="overlay">
         <span class="close-overlay" onclick="document.getElementById('historyOverlay').style.display='none'">×</span>
-        <h2 id="historyTitle" style="text-align: center; color: var(--accent);">Аналітика</h2>
-        <canvas id="myChart" style="width:100%; max-height: 400px;"></canvas>
-        <div id="historyList" style="margin-top: 30px;"></div>
+        <h2 id="historyTitle" style="text-align: center; color: var(--accent); margin-top: 40px;">Аналітика місяця</h2>
+        <canvas id="myChart" style="width:100%; max-height: 350px;"></canvas>
+        <div id="historySummary" style="text-align: center; margin-top: 20px; font-size: 1.2em;"></div>
     </div>
 
 <script>
 const rates = {12:300, 11:100, 10:25, 9:0, 8:0, 7:-25, 6:-100, 5:-300, 4:-300, 3:-300, 2:-500};
-const kurs = 41.5; // Курс грн до долара
+const kurs = 41.5;
+
 let data = JSON.parse(localStorage.getItem('gradeData')) || [
     {name: "Понеділок", lessons: 8, grades: []},
     {name: "Вівторок", lessons: 8, grades: []},
@@ -84,6 +81,9 @@ let data = JSON.parse(localStorage.getItem('gradeData')) || [
     {name: "Четвер", lessons: 7, grades: []},
     {name: "П'ятниця", lessons: 7, grades: []}
 ];
+
+let monthHistory = JSON.parse(localStorage.getItem('monthHistory')) || []; // Масив з 4 тижнів
+let currentWeekNum = parseInt(localStorage.getItem('currentWeekNum')) || 1;
 
 function init() {
     const container = document.getElementById('days-container');
@@ -93,13 +93,9 @@ function init() {
         div.className = 'day-card';
         let lessonHTML = '';
         for(let i=0; i<day.lessons; i++) {
-            lessonHTML += `
-                <div class="lesson-row">
-                    <span class="lesson-num">${i+1}</span>
-                    <input type="number" value="${day.grades[i] || ''}" onchange="saveGrade(${dIdx}, ${i}, this.value)">
-                </div>`;
+            lessonHTML += `<div class="lesson-row"><span class="lesson-num">${i+1}</span><input type="number" value="${day.grades[i] || ''}" onchange="saveGrade(${dIdx}, ${i}, this.value)"></div>`;
         }
-        div.innerHTML = `<h3 style="margin-top:0">${day.name}</h3>${lessonHTML}`;
+        div.innerHTML = `<h3 style="margin:0 0 15px 0; color: var(--accent);">${day.name}</h3>${lessonHTML}`;
         container.appendChild(div);
     });
     updateUI();
@@ -117,40 +113,53 @@ function updateUI() {
     document.getElementById('usd-total').innerText = `$${(uah / kurs).toFixed(2)}`;
     document.getElementById('stat-month').innerText = localStorage.getItem('monthTotal') || 0;
     document.getElementById('stat-year').innerText = localStorage.getItem('yearTotal') || 0;
+    document.getElementById('stat-week-num').innerText = currentWeekNum;
 }
 
 let chart;
-function showHistory(mode) {
+function showHistory() {
     document.getElementById('historyOverlay').style.display = 'block';
-    const history = JSON.parse(localStorage.getItem('weekHistory') || '[]');
-    const labels = history.map((h, i) => `Тиж ${i+1}`);
-    const vals = history.map(h => h.sum);
+    const labels = ["Тижд 1", "Тижд 2", "Тижд 3", "Тижд 4"];
+    const vals = [0, 0, 0, 0];
+    monthHistory.forEach((val, i) => vals[i] = val);
 
     if(chart) chart.destroy();
     chart = new Chart(document.getElementById('myChart'), {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [{ label: 'Дохід (грн)', data: vals, borderColor: '#32ff7e', tension: 0.3, fill: true, backgroundColor: 'rgba(50, 255, 126, 0.1)' }]
+            datasets: [{ label: 'ГРН', data: vals, borderColor: '#32ff7e', tension: 0.4, fill: true, backgroundColor: 'rgba(50, 255, 126, 0.1)', pointRadius: 6 }]
         },
-        options: { scales: { y: { beginAtZero: true, grid: { color: '#222' } } } }
+        options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222' } }, x: { grid: { color: '#222' } } } }
     });
+    
+    document.getElementById('historySummary').innerHTML = `Зараз йде тиждень: <b>${currentWeekNum}</b><br>Всього за місяць: <span style="color:var(--accent)">${localStorage.getItem('monthTotal') || 0} грн</span>`;
 }
 
 function finishWeek() {
     let uah = 0;
     data.forEach(day => day.grades.forEach(g => uah += (rates[g] || 0)));
     
-    // Збереження історії
-    let history = JSON.parse(localStorage.getItem('weekHistory') || '[]');
-    history.push({date: new Date().toLocaleDateString(), sum: uah});
-    localStorage.setItem('weekHistory', JSON.stringify(history));
+    monthHistory.push(uah);
+    let monthTotal = (parseInt(localStorage.getItem('monthTotal') || 0) + uah);
+    let yearTotal = (parseInt(localStorage.getItem('yearTotal') || 0) + uah);
     
-    localStorage.setItem('monthTotal', (parseInt(localStorage.getItem('monthTotal') || 0) + uah));
-    localStorage.setItem('yearTotal', (parseInt(localStorage.getItem('yearTotal') || 0) + uah));
+    localStorage.setItem('monthTotal', monthTotal);
+    localStorage.setItem('yearTotal', yearTotal);
+    localStorage.setItem('monthHistory', JSON.stringify(monthHistory));
 
-    alert(`Тиждень завершено! Зароблено: ${uah} грн ($${(uah/kurs).toFixed(2)})`);
-    
+    if (currentWeekNum >= 4) {
+        alert(`🎉 ВІТАЮ! МІСЯЦЬ ЗАВЕРШЕНО!\nВи отримали аж ${monthTotal} грн ($${(monthTotal/kurs).toFixed(2)})\n\nПочинаємо новий місяць з чистого листа!`);
+        currentWeekNum = 1;
+        monthHistory = [];
+        localStorage.setItem('monthTotal', 0);
+        localStorage.setItem('monthHistory', JSON.stringify([]));
+    } else {
+        alert(`Тиждень ${currentWeekNum} завершено!\nЗароблено: ${uah} грн.`);
+        currentWeekNum++;
+    }
+
+    localStorage.setItem('currentWeekNum', currentWeekNum);
     data.forEach(day => day.grades = []);
     localStorage.setItem('gradeData', JSON.stringify(data));
     location.reload();
