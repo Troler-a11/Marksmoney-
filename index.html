@@ -8,6 +8,9 @@
         :root { --bg: #000; --card: #111; --accent: #32ff7e; --text: #fff; --mono: #2ecc71; }
         body { font-family: 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; padding-bottom: 50px; }
         
+        /* Секретна кнопка */
+        .reset-btn { position: absolute; top: 5px; right: 5px; font-size: 12px; cursor: pointer; opacity: 0.5; z-index: 10; }
+
         .stats-bar { display: flex; gap: 10px; margin-bottom: 20px; }
         .stat-card { flex: 1; background: var(--card); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; border: 1px solid #222; }
         .stat-card span { display: block; font-size: 1.4em; font-weight: 900; color: var(--accent); }
@@ -36,6 +39,8 @@
     </style>
 </head>
 <body>
+
+    <div class="reset-btn" onclick="secretReset()">🌏</div>
 
     <div class="stats-bar">
         <div class="stat-card">Тиждень <span id="stat-week-num">1</span></div>
@@ -102,6 +107,17 @@ function init() {
     updateUI();
 }
 
+function secretReset() {
+    let code = prompt("Введіть код для обнулення:");
+    if(code === "ydalit") {
+        localStorage.clear();
+        alert("Всі дані видалено!");
+        location.reload();
+    } else {
+        alert("Невірний код!");
+    }
+}
+
 function saveGrade(dIdx, gIdx, val) {
     data[dIdx].grades[gIdx] = parseInt(val) || "";
     localStorage.setItem('gradeData', JSON.stringify(data));
@@ -163,8 +179,6 @@ function finishWeek() {
 
     if (currentWeekNum >= 4) {
         alert(`🎉 МІСЯЦЬ ЗАВЕРШЕНО! Сума: ${monthTotal} грн.`);
-        
-        // Додаємо в річну історію (поточний місяць)
         let currentMonthIdx = new Date().getMonth(); 
         yearHistory[currentMonthIdx] = (yearHistory[currentMonthIdx] || 0) + monthTotal;
         localStorage.setItem('yearHistory', JSON.stringify(yearHistory));
