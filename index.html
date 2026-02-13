@@ -38,7 +38,7 @@
 <body>
 
     <div class="stats-bar">
-        <div class="stat-card" onclick="showHistory('month')">Тиждень <span id="stat-week-num">1</span></div>
+        <div class="stat-card">Тиждень <span id="stat-week-num">1</span></div>
         <div class="stat-card" onclick="showHistory('month')">Місяць <span id="stat-month">0</span></div>
         <div class="stat-card" onclick="showHistory('year')">Рік <span id="stat-year">0</span></div>
     </div>
@@ -65,7 +65,7 @@
 
     <div id="historyOverlay" class="overlay">
         <span class="close-overlay" onclick="document.getElementById('historyOverlay').style.display='none'">×</span>
-        <h2 id="historyTitle" style="text-align: center; color: var(--accent); margin-top: 40px;">Аналітика місяця</h2>
+        <h2 id="historyTitle" style="text-align: center; color: var(--accent); margin-top: 40px;">Аналітика</h2>
         <canvas id="myChart" style="width:100%; max-height: 350px;"></canvas>
         <div id="historySummary" style="text-align: center; margin-top: 20px; font-size: 1.2em;"></div>
     </div>
@@ -82,7 +82,8 @@ let data = JSON.parse(localStorage.getItem('gradeData')) || [
     {name: "П'ятниця", lessons: 7, grades: []}
 ];
 
-let monthHistory = JSON.parse(localStorage.getItem('monthHistory')) || []; // Масив з 4 тижнів
+let monthHistory = JSON.parse(localStorage.getItem('monthHistory')) || []; 
+let yearHistory = JSON.parse(localStorage.getItem('yearHistory')) || []; 
 let currentWeekNum = parseInt(localStorage.getItem('currentWeekNum')) || 1;
 
 function init() {
@@ -117,23 +118,35 @@ function updateUI() {
 }
 
 let chart;
-function showHistory() {
+function showHistory(mode) {
     document.getElementById('historyOverlay').style.display = 'block';
-    const labels = ["Тижд 1", "Тижд 2", "Тижд 3", "Тижд 4"];
-    const vals = [0, 0, 0, 0];
-    monthHistory.forEach((val, i) => vals[i] = val);
+    let labels, vals, title;
+
+    if (mode === 'month') {
+        title = "Аналітика місяця (грн)";
+        labels = ["Тижд 1", "Тижд 2", "Тижд 3", "Тижд 4"];
+        vals = [0, 0, 0, 0];
+        monthHistory.forEach((val, i) => vals[i] = val);
+        document.getElementById('historySummary').innerHTML = `Тиждень: ${currentWeekNum}/4<br>Всього: <span style="color:var(--accent)">${localStorage.getItem('monthTotal') || 0} грн</span>`;
+    } else {
+        title = "Аналітика року (грн)";
+        labels = ["Січ", "Лют", "Бер", "Кві", "Тра", "Чер", "Лип", "Сер", "Вер", "Жов", "Лис", "Гру"];
+        vals = new Array(12).fill(0);
+        yearHistory.forEach((val, i) => vals[i] = val);
+        document.getElementById('historySummary').innerHTML = `Загальний капітал: <span style="color:var(--accent)">${localStorage.getItem('yearTotal') || 0} грн</span>`;
+    }
+
+    document.getElementById('historyTitle').innerText = title;
 
     if(chart) chart.destroy();
     chart = new Chart(document.getElementById('myChart'), {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [{ label: 'ГРН', data: vals, borderColor: '#32ff7e', tension: 0.4, fill: true, backgroundColor: 'rgba(50, 255, 126, 0.1)', pointRadius: 6 }]
+            datasets: [{ label: 'Дохід', data: vals, borderColor: '#32ff7e', tension: 0.4, fill: true, backgroundColor: 'rgba(50, 255, 126, 0.1)', pointRadius: 5 }]
         },
         options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#222' } }, x: { grid: { color: '#222' } } } }
     });
-    
-    document.getElementById('historySummary').innerHTML = `Зараз йде тиждень: <b>${currentWeekNum}</b><br>Всього за місяць: <span style="color:var(--accent)">${localStorage.getItem('monthTotal') || 0} грн</span>`;
 }
 
 function finishWeek() {
@@ -149,13 +162,18 @@ function finishWeek() {
     localStorage.setItem('monthHistory', JSON.stringify(monthHistory));
 
     if (currentWeekNum >= 4) {
-        alert(`🎉 ВІТАЮ! МІСЯЦЬ ЗАВЕРШЕНО!\nВи отримали аж ${monthTotal} грн ($${(monthTotal/kurs).toFixed(2)})\n\nПочинаємо новий місяць з чистого листа!`);
+        alert(`🎉 МІСЯЦЬ ЗАВЕРШЕНО! Сума: ${monthTotal} грн.`);
+        
+        // Додаємо в річну історію (поточний місяць)
+        let currentMonthIdx = new Date().getMonth(); 
+        yearHistory[currentMonthIdx] = (yearHistory[currentMonthIdx] || 0) + monthTotal;
+        localStorage.setItem('yearHistory', JSON.stringify(yearHistory));
+
         currentWeekNum = 1;
         monthHistory = [];
         localStorage.setItem('monthTotal', 0);
         localStorage.setItem('monthHistory', JSON.stringify([]));
     } else {
-        alert(`Тиждень ${currentWeekNum} завершено!\nЗароблено: ${uah} грн.`);
         currentWeekNum++;
     }
 
