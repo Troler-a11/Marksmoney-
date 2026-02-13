@@ -2,149 +2,157 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <title>GradeCash — Твій заробіток</title>
+    <title>GradeCash PRO</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --bg: #121212;
-            --card: #1e1e1e;
-            --accent: #00ff88;
-            --text: #ffffff;
-        }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 80px; }
-        .container { max-width: 600px; margin: 0 auto; }
-        h1 { text-align: center; color: var(--accent); }
+        :root { --bg: #000; --card: #111; --accent: #32ff7e; --text: #fff; --mono: #2ecc71; }
+        body { font-family: 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
         
-        .stats-bar { display: flex; justify-content: space-around; margin-bottom: 20px; background: var(--card); padding: 15px; border-radius: 12px; }
-        .stats-item { text-align: center; cursor: pointer; transition: 0.3s; }
-        .stats-item:hover { color: var(--accent); }
-        .stats-item span { display: block; font-size: 1.2em; font-weight: bold; }
+        /* Статистика */
+        .stats-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .stat-card { flex: 1; background: var(--card); padding: 15px; border-radius: 15px; text-align: center; cursor: pointer; border: 1px solid #222; }
+        .stat-card span { display: block; font-size: 1.4em; font-weight: 900; color: var(--accent); }
 
-        .day-card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; border-left: 5px solid var(--accent); }
-        .day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        
-        input[type="number"] { background: #333; border: 1px solid #444; color: white; padding: 5px; border-radius: 5px; width: 50px; text-align: center; }
-        .grades-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 10px; margin-top: 10px; }
-        
-        .finish-btn { width: 100%; padding: 15px; background: var(--accent); border: none; border-radius: 10px; color: black; font-weight: bold; font-size: 1.1em; cursor: pointer; margin-top: 20px; }
-        
-        .nav-btn { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; padding: 10px 30px; border-radius: 20px; border: 1px solid var(--accent); cursor: pointer; color: white; }
-        
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; z-index: 100; text-align: center; }
-        .modal-content { background: var(--card); padding: 30px; border-radius: 20px; border: 2px solid var(--accent); max-width: 80%; }
+        /* Картка Monobank (імітація) */
+        .mono-card { width: 100%; max-width: 350px; height: 210px; background: #1a1a1a; border-radius: 18px; margin: 20px auto; padding: 25px; box-sizing: border-box; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #333; }
+        .mono-logo { font-weight: bold; font-size: 1.2em; }
+        .mono-chip { width: 40px; height: 30px; background: #333; border-radius: 5px; margin-top: 20px; }
+        .mono-number { font-size: 1.3em; letter-spacing: 2px; margin-top: 25px; color: #eee; }
+        .mono-name { position: absolute; bottom: 25px; left: 25px; text-transform: uppercase; font-size: 0.9em; color: #999; }
+        .mono-type { position: absolute; bottom: 25px; right: 25px; font-weight: bold; font-size: 1.1em; }
+        .card-line { position: absolute; left: 0; top: 20px; width: 4px; height: 40px; background: var(--mono); }
+
+        /* Уроки стовпчиком */
+        .day-card { background: var(--card); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+        .lesson-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; }
+        .lesson-num { color: #555; font-weight: bold; width: 30px; }
+        input[type="number"] { background: #222; border: none; color: #fff; padding: 8px; border-radius: 8px; width: 60px; text-align: center; font-size: 1.1em; }
+
+        /* Конвертація */
+        .usd-display { text-align: center; margin-top: 30px; }
+        .usd-val { font-size: 3em; font-weight: 900; color: var(--accent); margin: 0; }
+        .motivation-text { color: #888; margin-bottom: 10px; }
+
+        /* Модальне вікно (Графік) */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; padding: 20px; box-sizing: border-box; }
+        .close-overlay { position: absolute; top: 20px; right: 20px; font-size: 2em; cursor: pointer; }
+
+        .finish-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 15px; color: #000; font-weight: 900; cursor: pointer; margin: 20px 0; }
     </style>
 </head>
 <body>
 
-<div class="container" id="main-page">
-    <h1>GradeCash 💸</h1>
-    
     <div class="stats-bar">
-        <div class="stats-item" onclick="alert('За тиждень: ' + (localStorage.getItem('weekTotal') || 0) + ' грн')">Тиждень<span id="stat-week">0</span></div>
-        <div class="stats-item" onclick="alert('За місяць: ' + (localStorage.getItem('monthTotal') || 0) + ' грн')">Місяць<span id="stat-month">0</span></div>
-        <div class="stats-item" onclick="alert('За рік: ' + (localStorage.getItem('yearTotal') || 0) + ' грн')">Рік<span id="stat-year">0</span></div>
+        <div class="stat-card" onclick="showHistory('month')">Місяць<span id="stat-month">0</span></div>
+        <div class="stat-card" onclick="showHistory('year')">Рік<span id="stat-year">0</span></div>
     </div>
 
     <div id="days-container"></div>
 
-    <button class="finish-btn" onclick="finishWeek()">ЗАКІНЧИТИ ТИЖДЕНЬ</button>
-</div>
-
-<button class="nav-btn" onclick="location.reload()">НА ГОЛОВНУ</button>
-
-<div id="resultModal" class="modal">
-    <div class="modal-content">
-        <h2 id="resultTitle"></h2>
-        <p id="resultText"></p>
-        <button class="finish-btn" onclick="closeModal()">ОК, НОВИЙ ТИЖДЕНЬ</button>
+    <div class="usd-display">
+        <p class="motivation-text">Поточний баланс тижня:</p>
+        <h2 class="usd-val" id="usd-total">$0.00</h2>
+        <p>Скоро на вашій карті, продовжуйте в тому ж дусі 👇</p>
     </div>
-</div>
+
+    <div class="mono-card">
+        <div class="card-line"></div>
+        <div class="mono-logo">monobank <span style="font-size: 0.6em; font-weight: normal; opacity: 0.6;">Universal Bank</span></div>
+        <div style="position: absolute; right: 25px; top: 25px; color: #aaa;">USD</div>
+        <div class="mono-chip"></div>
+        <div class="mono-number">4874 1000 8549 0699</div>
+        <div class="mono-name">ARTEM BEI</div>
+        <div class="mono-type">VISA</div>
+    </div>
+
+    <button class="finish-btn" onclick="finishWeek()">ЗАКІНЧИТИ ТИЖДЕНЬ</button>
+
+    <div id="historyOverlay" class="overlay">
+        <span class="close-overlay" onclick="document.getElementById('historyOverlay').style.display='none'">×</span>
+        <h2 id="historyTitle" style="text-align: center; color: var(--accent);">Аналітика</h2>
+        <canvas id="myChart" style="width:100%; max-height: 400px;"></canvas>
+        <div id="historyList" style="margin-top: 30px;"></div>
+    </div>
 
 <script>
-const days = ["Понеділок", "Вівторок", "Середа", "Четвер", "П'ятниця"];
 const rates = {12:300, 11:100, 10:25, 9:0, 8:0, 7:-25, 6:-100, 5:-300, 4:-300, 3:-300, 2:-500};
-
-let data = JSON.parse(localStorage.getItem('gradeData')) || days.map(d => ({name: d, lessons: 0, grades: []}));
+const kurs = 41.5; // Курс грн до долара
+let data = JSON.parse(localStorage.getItem('gradeData')) || [
+    {name: "Понеділок", lessons: 8, grades: []},
+    {name: "Вівторок", lessons: 8, grades: []},
+    {name: "Середа", lessons: 8, grades: []},
+    {name: "Четвер", lessons: 7, grades: []},
+    {name: "П'ятниця", lessons: 7, grades: []}
+];
 
 function init() {
     const container = document.getElementById('days-container');
     container.innerHTML = '';
-    data.forEach((day, idx) => {
+    data.forEach((day, dIdx) => {
         const div = document.createElement('div');
         div.className = 'day-card';
-        div.innerHTML = `
-            <div class="day-header">
-                <strong>${day.name}</strong>
-                <label>Уроків: <input type="number" min="0" max="10" value="${day.lessons}" onchange="updateLessons(${idx}, this.value)"></label>
-            </div>
-            <div class="grades-grid" id="grades-${idx}"></div>
-        `;
+        let lessonHTML = '';
+        for(let i=0; i<day.lessons; i++) {
+            lessonHTML += `
+                <div class="lesson-row">
+                    <span class="lesson-num">${i+1}</span>
+                    <input type="number" value="${day.grades[i] || ''}" onchange="saveGrade(${dIdx}, ${i}, this.value)">
+                </div>`;
+        }
+        div.innerHTML = `<h3 style="margin-top:0">${day.name}</h3>${lessonHTML}`;
         container.appendChild(div);
-        renderGrades(idx);
     });
-    updateStats();
+    updateUI();
 }
 
-function updateLessons(dayIdx, count) {
-    data[dayIdx].lessons = parseInt(count) || 0;
-    while(data[dayIdx].grades.length < count) data[dayIdx].grades.push("");
-    data[dayIdx].grades = data[dayIdx].grades.slice(0, count);
-    save();
-    renderGrades(dayIdx);
+function saveGrade(dIdx, gIdx, val) {
+    data[dIdx].grades[gIdx] = parseInt(val) || "";
+    localStorage.setItem('gradeData', JSON.stringify(data));
+    updateUI();
 }
 
-function renderGrades(dayIdx) {
-    const grid = document.getElementById(`grades-${dayIdx}`);
-    grid.innerHTML = '';
-    data[dayIdx].grades.forEach((grade, gIdx) => {
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.placeholder = '-';
-        input.value = grade;
-        input.onchange = (e) => {
-            data[dayIdx].grades[gIdx] = parseInt(e.target.value) || "";
-            save();
-            updateStats();
-        };
-        grid.appendChild(input);
-    });
-}
-
-function save() { localStorage.setItem('gradeData', JSON.stringify(data)); }
-
-function calculateWeek() {
-    return data.reduce((sum, day) => {
-        return sum + day.grades.reduce((dSum, g) => dSum + (rates[g] || 0), 0);
-    }, 0);
-}
-
-function updateStats() {
-    const total = calculateWeek();
-    document.getElementById('stat-week').innerText = total;
+function updateUI() {
+    let uah = 0;
+    data.forEach(day => day.grades.forEach(g => uah += (rates[g] || 0)));
+    document.getElementById('usd-total').innerText = `$${(uah / kurs).toFixed(2)}`;
     document.getElementById('stat-month').innerText = localStorage.getItem('monthTotal') || 0;
     document.getElementById('stat-year').innerText = localStorage.getItem('yearTotal') || 0;
 }
 
-function finishWeek() {
-    const total = calculateWeek();
-    let title = "", text = `Вітаю! За цей тиждень ви отримали ${total} грн.`;
-    
-    if(total < 1000) title = "Можна було і більше 😕";
-    else if(total < 1700) title = "Добре! 👍";
-    else title = "БЕЗДОГАННО! 🏆";
+let chart;
+function showHistory(mode) {
+    document.getElementById('historyOverlay').style.display = 'block';
+    const history = JSON.parse(localStorage.getItem('weekHistory') || '[]');
+    const labels = history.map((h, i) => `Тиж ${i+1}`);
+    const vals = history.map(h => h.sum);
 
-    document.getElementById('resultTitle').innerText = title;
-    document.getElementById('resultText').innerText = text;
-    document.getElementById('resultModal').style.display = 'flex';
-
-    // Оновлюємо історію
-    localStorage.setItem('weekTotal', total);
-    localStorage.setItem('monthTotal', (parseInt(localStorage.getItem('monthTotal') || 0) + total));
-    localStorage.setItem('yearTotal', (parseInt(localStorage.getItem('yearTotal') || 0) + total));
+    if(chart) chart.destroy();
+    chart = new Chart(document.getElementById('myChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{ label: 'Дохід (грн)', data: vals, borderColor: '#32ff7e', tension: 0.3, fill: true, backgroundColor: 'rgba(50, 255, 126, 0.1)' }]
+        },
+        options: { scales: { y: { beginAtZero: true, grid: { color: '#222' } } } }
+    });
 }
 
-function closeModal() {
-    data.forEach(day => day.grades = day.grades.fill(""));
-    save();
+function finishWeek() {
+    let uah = 0;
+    data.forEach(day => day.grades.forEach(g => uah += (rates[g] || 0)));
+    
+    // Збереження історії
+    let history = JSON.parse(localStorage.getItem('weekHistory') || '[]');
+    history.push({date: new Date().toLocaleDateString(), sum: uah});
+    localStorage.setItem('weekHistory', JSON.stringify(history));
+    
+    localStorage.setItem('monthTotal', (parseInt(localStorage.getItem('monthTotal') || 0) + uah));
+    localStorage.setItem('yearTotal', (parseInt(localStorage.getItem('yearTotal') || 0) + uah));
+
+    alert(`Тиждень завершено! Зароблено: ${uah} грн ($${(uah/kurs).toFixed(2)})`);
+    
+    data.forEach(day => day.grades = []);
+    localStorage.setItem('gradeData', JSON.stringify(data));
     location.reload();
 }
 
